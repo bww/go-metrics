@@ -103,7 +103,7 @@ func newDeferredGaugeVec(name, desc string, opts []string) *deferredGaugeVec {
 func (c *deferredGaugeVec) Realize(m *Metrics) {
 	c.Lock()
 	defer c.Unlock()
-	c.gauge = m.RegisterGaugeVec(c.name, c.desc, c.opts...)
+	c.gauge = m.RegisterGaugeVec(c.name, c.desc, c.opts)
 }
 
 func (c *deferredGaugeVec) With(t Tags) Gauge {

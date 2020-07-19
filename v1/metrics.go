@@ -64,7 +64,7 @@ func (m *Metrics) RegisterCounter(name, desc string, tags Tags) Counter {
 	return v
 }
 
-func (m *Metrics) RegisterCounterVec(name, desc string, opts ...string) CounterVec {
+func (m *Metrics) RegisterCounterVec(name, desc string, opts []string) CounterVec {
 	v := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: m.namespace,
 		Subsystem: m.system,
@@ -88,7 +88,7 @@ func (m *Metrics) RegisterGauge(name, desc string, tags Tags) Gauge {
 	return v
 }
 
-func (m *Metrics) RegisterGaugeVec(name, desc string, opts ...string) GaugeVec {
+func (m *Metrics) RegisterGaugeVec(name, desc string, opts []string) GaugeVec {
 	v := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: m.namespace,
 		Subsystem: m.system,
@@ -139,11 +139,11 @@ func RegisterCounter(name, desc string, tags Tags) Counter {
 	}
 }
 
-func RegisterCounterVec(name, desc string, opts ...string) CounterVec {
+func RegisterCounterVec(name, desc string, opts []string) CounterVec {
 	lock.Lock()
 	defer lock.Unlock()
 	if shared != nil {
-		return shared.RegisterCounterVec(name, desc, opts...)
+		return shared.RegisterCounterVec(name, desc, opts)
 	} else {
 		d := newDeferredCounterVec(name, desc, opts)
 		pending = append(pending, d)
@@ -163,11 +163,11 @@ func RegisterGauge(name, desc string, tags Tags) Gauge {
 	}
 }
 
-func RegisterGaugeVec(name, desc string, opts ...string) GaugeVec {
+func RegisterGaugeVec(name, desc string, opts []string) GaugeVec {
 	lock.Lock()
 	defer lock.Unlock()
 	if shared != nil {
-		return shared.RegisterGaugeVec(name, desc, opts...)
+		return shared.RegisterGaugeVec(name, desc, opts)
 	} else {
 		d := newDeferredGaugeVec(name, desc, opts)
 		pending = append(pending, d)

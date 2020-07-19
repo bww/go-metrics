@@ -73,7 +73,7 @@ func newDeferredCounterVec(name, desc string, opts []string) *deferredCounterVec
 func (c *deferredCounterVec) Realize(m *Metrics) {
 	c.Lock()
 	defer c.Unlock()
-	c.counter = m.RegisterCounterVec(c.name, c.desc, c.opts...)
+	c.counter = m.RegisterCounterVec(c.name, c.desc, c.opts)
 }
 
 func (c *deferredCounterVec) With(t Tags) Counter {
