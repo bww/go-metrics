@@ -15,6 +15,12 @@ var errReinitialized = errors.New("Initialized more than once")
 
 type Tags map[string]string
 
+var defaultQuantiles = map[float64]float64{
+	0.5:  0.05,
+	0.9:  0.01,
+	0.99: 0.001,
+}
+
 type Config struct {
 	Addr      string
 	Namespace string
@@ -97,6 +103,32 @@ func (m *Metrics) RegisterGaugeVec(name, desc string, opts []string) GaugeVec {
 	}, opts)
 	prometheus.MustRegister(v)
 	p := prometheusGaugeVec(*v)
+	return &p
+}
+
+func (m *Metrics) RegisterSampler(name, desc string, tags Tags) Sampler {
+	v := prometheus.NewSummary(prometheus.SummaryOpts{
+		Namespace:   m.namespace,
+		Subsystem:   m.system,
+		Name:        name,
+		Help:        desc,
+		ConstLabels: prometheus.Labels(tags),
+		Objectives:  defaultQuantiles,
+	})
+	prometheus.MustRegister(v)
+	return v
+}
+
+func (m *Metrics) RegisterSamplerVec(name, desc string, opts []string) SamplerVec {
+	v := prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Namespace:  m.namespace,
+		Subsystem:  m.system,
+		Name:       name,
+		Help:       desc,
+		Objectives: defaultQuantiles,
+	}, opts)
+	prometheus.MustRegister(v)
+	p := prometheusSamplerVec(*v)
 	return &p
 }
 
