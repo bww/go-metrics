@@ -206,3 +206,27 @@ func RegisterGaugeVec(name, desc string, opts []string) GaugeVec {
 		return d
 	}
 }
+
+func RegisterSampler(name, desc string, tags Tags) Sampler {
+	lock.Lock()
+	defer lock.Unlock()
+	if shared != nil {
+		return shared.RegisterSampler(name, desc, tags)
+	} else {
+		d := newDeferredSampler(name, desc, tags)
+		pending = append(pending, d)
+		return d
+	}
+}
+
+func RegisterSamplerVec(name, desc string, opts []string) SamplerVec {
+	lock.Lock()
+	defer lock.Unlock()
+	if shared != nil {
+		return shared.RegisterSamplerVec(name, desc, opts)
+	} else {
+		d := newDeferredSamplerVec(name, desc, opts)
+		pending = append(pending, d)
+		return d
+	}
+}
