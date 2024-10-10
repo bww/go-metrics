@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"errors"
-	"log"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -22,9 +22,17 @@ var defaultQuantiles = map[float64]float64{
 }
 
 type Config struct {
-	Addr      string
-	Namespace string
-	System    string
+	Addr       string
+	Namespace  string
+	System     string
+	Registerer prometheus.Registerer
+	Gatherer   prometheus.Gatherer
+}
+
+func (c Config) WithRegistry(reg *prometheus.Registry) Config {
+	c.Registerer = reg
+	c.Gatherer = reg
+	return c
 }
 
 type Deferred interface {
@@ -32,29 +40,41 @@ type Deferred interface {
 }
 
 type Metrics struct {
-	server    *http.Server
-	namespace string
-	system    string
+	server     *http.Server
+	registerer prometheus.Registerer
+	gatherer   prometheus.Gatherer
+	namespace  string
+	system     string
 }
 
 func New(conf Config) (*Metrics, error) {
+	r := conf.Registerer
+	if r == nil {
+		r = prometheus.DefaultRegisterer
+	}
+	g := conf.Gatherer
+	if g == nil {
+		g = prometheus.DefaultGatherer
+	}
 	s := &http.Server{
 		Addr:           conf.Addr,
-		Handler:        promhttp.Handler(),
+		Handler:        promhttp.InstrumentMetricHandler(r, promhttp.HandlerFor(g, promhttp.HandlerOpts{})),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 	return &Metrics{
-		s,
-		conf.Namespace,
-		conf.System,
+		server:     s,
+		registerer: r,
+		gatherer:   g,
+		namespace:  conf.Namespace,
+		system:     conf.System,
 	}, nil
 }
 
 func (m *Metrics) Run() {
 	go func() {
-		log.Fatal(m.server.ListenAndServe())
+		panic(m.server.ListenAndServe())
 	}()
 }
 
@@ -66,7 +86,10 @@ func (m *Metrics) RegisterCounter(name, desc string, tags Tags) Counter {
 		Help:        desc,
 		ConstLabels: prometheus.Labels(tags),
 	})
-	prometheus.MustRegister(v)
+	err := m.registerer.Register(v)
+	if err != nil {
+		panic(fmt.Errorf("Could not register metric: %q: %w", name, err))
+	}
 	return v
 }
 
@@ -77,7 +100,10 @@ func (m *Metrics) RegisterCounterVec(name, desc string, opts []string) CounterVe
 		Name:      name,
 		Help:      desc,
 	}, opts)
-	prometheus.MustRegister(v)
+	err := m.registerer.Register(v)
+	if err != nil {
+		panic(fmt.Errorf("Could not register metric: %q: %w", name, err))
+	}
 	p := prometheusCounterVec(*v)
 	return &p
 }
@@ -90,7 +116,10 @@ func (m *Metrics) RegisterGauge(name, desc string, tags Tags) Gauge {
 		Help:        desc,
 		ConstLabels: prometheus.Labels(tags),
 	})
-	prometheus.MustRegister(v)
+	err := m.registerer.Register(v)
+	if err != nil {
+		panic(fmt.Errorf("Could not register metric: %q: %w", name, err))
+	}
 	return v
 }
 
@@ -101,7 +130,10 @@ func (m *Metrics) RegisterGaugeVec(name, desc string, opts []string) GaugeVec {
 		Name:      name,
 		Help:      desc,
 	}, opts)
-	prometheus.MustRegister(v)
+	err := m.registerer.Register(v)
+	if err != nil {
+		panic(fmt.Errorf("Could not register metric: %q: %w", name, err))
+	}
 	p := prometheusGaugeVec(*v)
 	return &p
 }
@@ -115,7 +147,10 @@ func (m *Metrics) RegisterSampler(name, desc string, tags Tags) Sampler {
 		ConstLabels: prometheus.Labels(tags),
 		Objectives:  defaultQuantiles,
 	})
-	prometheus.MustRegister(v)
+	err := m.registerer.Register(v)
+	if err != nil {
+		panic(fmt.Errorf("Could not register metric: %q: %w", name, err))
+	}
 	return v
 }
 
@@ -127,7 +162,10 @@ func (m *Metrics) RegisterSamplerVec(name, desc string, opts []string) SamplerVe
 		Help:       desc,
 		Objectives: defaultQuantiles,
 	}, opts)
-	prometheus.MustRegister(v)
+	err := m.registerer.Register(v)
+	if err != nil {
+		panic(fmt.Errorf("Could not register metric: %q: %w", name, err))
+	}
 	p := prometheusSamplerVec(*v)
 	return &p
 }
